@@ -1,78 +1,107 @@
 "use client";
 
 import { useState } from "react";
-import { categories as initialCategories } from "@/lib/data";
 import { Category } from "@/types";
 import { Plus, Edit2, Trash2, GripVertical, Eye, X } from "lucide-react";
+import { useEffect } from "react";
+import { toast } from "react-toastify";
+import { getCategoriesApi, saveCategoryApi, deleteCategoryApi,} from "@/services/category.service";
+import Pagination from "@/components/common/Pagination";
 
-const emptyCategory: Omit<Category, "id"> = { name: "", slug: "", icon: "🪑", productCount: 0, image: "" };
+const emptyCategory: Omit<Category, "id"> = { name: "" };
+
+const CategoryForm = ({ data, onChange }: { data: any; onChange: (k: string, v: any) => void }) => (
+  <div className="space-y-3 text-sm">
+    <div>
+      <label className="block text-xs text-gray-500 mb-1">Category Name*</label>
+      <input value={data.name || ""} onChange={e => onChange("name", e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-amber-400" />
+    </div>
+
+  </div>
+);
+
 
 export default function AdminCategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>(initialCategories);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [viewCat, setViewCat] = useState<Category | null>(null);
   const [editCat, setEditCat] = useState<Category | null>(null);
   const [deleteCat, setDeleteCat] = useState<Category | null>(null);
   const [form, setForm] = useState<Omit<Category, "id">>(emptyCategory);
   const [formError, setFormError] = useState("");
-  const [toast, setToast] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);   // ✅ NEW
+  const [totalPages, setTotalPages] = useState(1);
 
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
+  const fetchCategories = async (page = 1) => {
+  setLoading(true);
+  const response: any = await getCategoriesApi({
+    page,
+    limit: 10,
+    search: "",
+  });
+  if (response?.success) {
+    setCategories(response.data);
+    const pagination = response.data?.[0]?.paginations;
+    setTotalPages(pagination?.totalPages || 1);
+    setCurrentPage(pagination?.currentPage || page);
+  }
+  setLoading(false);
+};
+  useEffect(() => {
+    fetchCategories();
+  }, []);
 
-  const handleAdd = () => {
-    if (!form.name || !form.slug) { setFormError("Name and Slug are required."); return; }
-    const newCat: Category = { ...form, id: "cat_" + Date.now() };
-    setCategories(prev => [...prev, newCat]);
-    setShowAddModal(false);
-    setForm(emptyCategory);
-    setFormError("");
-    showToast("✅ Category added!");
-  };
+  const handleAdd =
+    async () => {
+       if (!form.name) {
+        setFormError("Category Name Required" );
+        return;
+      }
+      const fd = new FormData();
+      fd.append("category_name", form.name );
+      const response: any = await saveCategoryApi(fd);
+      if ( response?.success ) {
+        setShowAddModal( false );
+        toast.success( response.message )
+        setForm( emptyCategory );
+        fetchCategories();
+      }
+    };
 
-  const handleEdit = () => {
-    if (!editCat) return;
-    if (!editCat.name || !editCat.slug) { setFormError("Name and Slug are required."); return; }
-    setCategories(prev => prev.map(c => c.id === editCat.id ? editCat : c));
-    setEditCat(null);
-    setFormError("");
-    showToast("✅ Category updated!");
-  };
+  const handleEdit =
+    async () => {
+      if (!editCat) return;
+      const fd = new FormData();
+      fd.append( "id", editCat.id );
+      fd.append( "category_name", editCat.name );
+      const response: any = await saveCategoryApi(fd);
+      if ( response?.succes ) {
+        setShowAddModal( false );
+        toast.success( response.message );
+        setEditCat( null );
+        fetchCategories();
+      }
+    };
 
-  const handleDelete = () => {
-    if (!deleteCat) return;
-    setCategories(prev => prev.filter(c => c.id !== deleteCat.id));
-    setDeleteCat(null);
-    showToast("🗑️ Category deleted.");
-  };
+  const handleDelete =
+    async () => {
+      if (!deleteCat) return;
+      const response: any =
+        await deleteCategoryApi({
+          id: deleteCat.id,
+          status: deleteCat.status == 1 ? "A" : "B",
+        });
+      if ( response?.success ) {
+        setDeleteCat( null );
+        toast.success( response.message );
+        fetchCategories();
+      }
+    };
 
-  const CategoryForm = ({ data, onChange }: { data: any; onChange: (k: string, v: any) => void }) => (
-    <div className="space-y-3 text-sm">
-      <div>
-        <label className="block text-xs text-gray-500 mb-1">Name*</label>
-        <input value={data.name || ""} onChange={e => onChange("name", e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-amber-400" />
-      </div>
-      <div>
-        <label className="block text-xs text-gray-500 mb-1">Slug* (e.g. office-chairs)</label>
-        <input value={data.slug || ""} onChange={e => onChange("slug", e.target.value.toLowerCase().replace(/\s+/g, "-"))} className="w-full border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-amber-400 font-mono" />
-      </div>
-      <div>
-        <label className="block text-xs text-gray-500 mb-1">Icon (emoji)</label>
-        <input value={data.icon || ""} onChange={e => onChange("icon", e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-amber-400" />
-      </div>
-      <div>
-        <label className="block text-xs text-gray-500 mb-1">Product Count</label>
-        <input type="number" value={data.productCount || 0} onChange={e => onChange("productCount", parseInt(e.target.value) || 0)} className="w-full border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-amber-400" />
-      </div>
-      <div>
-        <label className="block text-xs text-gray-500 mb-1">Image URL</label>
-        <input value={data.image || ""} onChange={e => onChange("image", e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-amber-400" />
-      </div>
-    </div>
-  );
 
   return (
     <div className="space-y-5">
-      {toast && <div className="fixed top-5 right-5 z-50 bg-gray-900 text-white text-sm px-4 py-3 rounded-xl shadow-lg">{toast}</div>}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -87,25 +116,21 @@ export default function AdminCategoriesPage() {
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="p-4 border-b border-gray-50 text-xs font-semibold text-gray-500 grid grid-cols-12 gap-3">
           <span className="col-span-1" />
-          <span className="col-span-1">Icon</span>
-          <span className="col-span-3">Name</span>
-          <span className="col-span-2">Slug</span>
-          <span className="col-span-2">Products</span>
-          <span className="col-span-1">Status</span>
-          <span className="col-span-2">Actions</span>
+          <span className="col-span-4">Name</span>
+          <span className="col-span-4">Status</span>
+          <span className="col-span-3">Actions</span>
         </div>
         <div className="divide-y divide-gray-50">
           {categories.map((cat) => (
             <div key={cat.id} className="p-4 grid grid-cols-12 gap-3 items-center hover:bg-amber-50/50 transition-colors group">
               <div className="col-span-1 text-gray-300 cursor-grab"><GripVertical size={16} /></div>
-              <div className="col-span-1 text-2xl">{cat.icon}</div>
-              <div className="col-span-3 font-medium text-gray-800 text-sm">{cat.name}</div>
-              <div className="col-span-2 text-xs text-gray-400 font-mono">{cat.slug}</div>
-              <div className="col-span-2 text-sm text-gray-600">{cat.productCount} items</div>
-              <div className="col-span-1">
-                <span className="text-xs bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded-full">Active</span>
+              <div className="col-span-4 font-medium text-gray-800 text-sm">{cat.name}</div>
+              <div className="col-span-4">
+                 <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${cat.status === "1" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+                  {cat.status === "1" ? "Active" : "Inactive"}
+                </span>
               </div>
-              <div className="col-span-2 flex items-center gap-1">
+              <div className="col-span-3 flex items-center gap-1">
                 <button onClick={() => setViewCat(cat)} className="w-7 h-7 flex items-center justify-center text-blue-500 hover:bg-blue-50 rounded-lg" title="View"><Eye size={13} /></button>
                 <button onClick={() => { setEditCat({ ...cat }); setFormError(""); }} className="w-7 h-7 flex items-center justify-center text-amber-600 hover:bg-amber-100 rounded-lg" title="Edit"><Edit2 size={13} /></button>
                 <button onClick={() => setDeleteCat(cat)} className="w-7 h-7 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-lg" title="Delete"><Trash2 size={13} /></button>
@@ -113,8 +138,13 @@ export default function AdminCategoriesPage() {
             </div>
           ))}
         </div>
-      </div>
 
+         <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          goToPage={(page) => fetchCategories(page)}
+        />
+      </div>
       {/* ADD MODAL */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
@@ -149,7 +179,7 @@ export default function AdminCategoriesPage() {
             </div>
             <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-2">
               <button onClick={() => setEditCat(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50">Cancel</button>
-              <button onClick={handleEdit} className="px-4 py-2 text-sm bg-amber-700 hover:bg-amber-800 text-white rounded-xl">Save</button>
+              <button onClick={handleEdit} className="px-4 py-2 text-sm bg-amber-700 hover:bg-amber-800 text-white rounded-xl">Update</button>
             </div>
           </div>
         </div>
@@ -164,10 +194,9 @@ export default function AdminCategoriesPage() {
               <button onClick={() => setViewCat(null)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
             </div>
             <div className="p-6 space-y-4">
-              {viewCat.image && <img src={viewCat.image} alt="" className="w-full h-36 object-cover rounded-xl" />}
-              <div className="text-5xl text-center">{viewCat.icon}</div>
+
               <div className="space-y-2">
-                {[["Name", viewCat.name], ["Slug", viewCat.slug], ["Products", `${viewCat.productCount} items`], ["Status", "Active"]].map(([label, value]) => (
+                {[["Name", viewCat.name], ["Status", "Active"]].map(([label, value]) => (
                   <div key={label} className="flex justify-between text-sm">
                     <span className="text-gray-500">{label}</span>
                     <span className="font-medium text-gray-800">{value}</span>

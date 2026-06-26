@@ -18,7 +18,7 @@ export default function Footer() {
             <p className="text-sm text-amber-300 leading-relaxed mb-4">
               Premium chair showroom offering the best brands — Godrej, Featherlite, Green Soul & more. Quality seating for every space.
             </p>
-            <div className="flex gap-3">
+            {/* <div className="flex gap-3">
               <a href="#" className="w-8 h-8 bg-amber-800 rounded-full flex items-center justify-center hover:bg-amber-600 transition-colors">
                 <Share2 size={15} />
               </a>
@@ -28,7 +28,7 @@ export default function Footer() {
               <a href="#" className="w-8 h-8 bg-amber-800 rounded-full flex items-center justify-center hover:bg-green-600 transition-colors">
                 <MessageCircle size={15} />
               </a>
-            </div>
+            </div> */}
           </div>
 
           {/* Quick Links */}
@@ -62,7 +62,7 @@ export default function Footer() {
                 { label: "Terms & Conditions", href: "/terms" },
                 { label: "My Orders", href: "/account/orders" },
                 { label: "My Wishlist", href: "/wishlist" },
-                { label: "Track Order", href: "/account/orders" },
+                { label: "Track Order", href: "/account/ordersgg" },
               ].map((link) => (
                 <li key={link.href}>
                   <Link href={link.href} className="text-sm text-amber-300 hover:text-white transition-colors">

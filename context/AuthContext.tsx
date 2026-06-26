@@ -1,65 +1,162 @@
 "use client";
+import { createContext, useContext, useEffect, useState,} from "react";
+import { loginApi, verifyEmailOtpApi, googleLoginApi, logoutApi,} from "@/services/user.service";
 
-import React, { createContext, useContext, useState } from "react";
-
-export type UserRole = "admin" | "customer" | null;
+type UserRole = | "admin" | "customer" | null;
 
 interface AuthUser {
-  name: string;
+  _id: string;
+  full_name: string;
   email: string;
+  mobile: string;
   role: UserRole;
 }
 
 interface AuthContextType {
   user: AuthUser | null;
-  login: (email: string, password: string) => { success: boolean; role: UserRole; error?: string };
-  logout: () => void;
   isLoggedIn: boolean;
+  loading: boolean;
+  login: ( email: string, password: string ) => Promise<any>;
+  otpLogin: ( email: string, otp: string ) => Promise<any>;
+  googleLogin: ( token: string ) => Promise<any>;
+  logout: () => Promise<void>;
 }
 
-// Static credentials
-const STATIC_USERS = [
-  {
-    email: "admin@srschairs.com",
-    password: "admin123",
-    name: "Admin",
-    role: "admin" as UserRole,
-  },
-  {
-    email: "customer@srschairs.com",
-    password: "customer123",
-    name: "Rahul Sharma",
-    role: "customer" as UserRole,
-  },
-];
+const AuthContext = createContext<AuthContextType>( {} as AuthContextType );
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export function AuthProvider({ children,}: { children: React.ReactNode;}) {
+  const [user, setUser] = useState<AuthUser | null>( null );
+  const [loading, setLoading] = useState(true);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-
-  const login = (email: string, password: string) => {
-    const found = STATIC_USERS.find(
-      (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-    );
-    if (found) {
-      setUser({ name: found.name, email: found.email, role: found.role });
-      return { success: true, role: found.role };
+  // =====================
+  // LOAD USER
+  // =====================
+  useEffect(() => {
+    const userData = localStorage.getItem( "user_data" );
+    if (userData) { setUser( JSON.parse(userData) );
     }
-    return { success: false, role: null, error: "Invalid email or password" };
+    setLoading(false);
+  }, []);
+
+  // =====================
+  // LOGIN
+  // =====================
+  const login = async ( email: string, password: string) => {
+    try {
+      const fd = new FormData();
+      fd.append( "email", email );
+      fd.append( "password", password );
+      const response: any = await loginApi(fd);
+      if ( response?.success || response?.status === "success" ) {
+        const user = response.data.user;
+        localStorage.setItem( "token", response.data.accessToken );
+        localStorage.setItem( "refresh_token", response.data.refreshToken);
+        localStorage.setItem( "user_data", JSON.stringify( user ));
+        setUser(user);
+        return {
+          success: true,
+          role: user.role,
+        };
+      }
+      return {
+        success: false,
+        error: response?.message,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error?.message || "Login failed",
+      };
+    }
   };
 
-  const logout = () => setUser(null);
+  // =====================
+  // OTP LOGIN
+  // =====================
+  const otpLogin = async ( email: string, otp: string ) => {
+    try {
+      const fd = new FormData();
+      fd.append( "email", email );
+      fd.append( "otp", otp );
+      const response: any = await verifyEmailOtpApi( fd );
+      if ( response?.success || response?.status === "success") {
+        const user = response.data.user;
+        localStorage.setItem( "token", response.data.accessToken );
+        localStorage.setItem( "refresh_token", response.data.refreshToken );
+        localStorage.setItem( "user_data", JSON.stringify( user ) );
+        setUser(user);
+        return {
+          success: true,
+          role: user.role,
+        };
+      }
+
+      return {
+        success: false,
+        error: response?.message,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error?.message || "OTP Login Failed",
+      };
+    }
+  };
+
+  // =====================
+  // GOOGLE LOGIN
+  // =====================
+  const googleLogin =
+    async ( token: string ) => {
+      try {
+        const fd = new FormData();
+        fd.append( "token", token );
+        const response: any = await googleLoginApi( fd );
+        if ( response?.success || response?.status === "success" ) {
+          const user = response.data.user;
+          localStorage.setItem( "token", response.data.accessToken );
+          localStorage.setItem( "refresh_token", response.data.refreshToken );
+          localStorage.setItem( "user_data", JSON.stringify( user ) );
+          setUser(user);
+          return {
+            success: true,
+            role: user.role,
+          };
+        }
+        return {
+          success: false,
+          error: response?.message,
+        };
+      } catch (error: any) {
+        return {
+          success: false,
+          error: error?.message || "Google Login Failed",
+        };
+      }
+    };
+
+  // =====================
+  // LOGOUT
+  // =====================
+  const logout =
+    async () => {
+      try {
+        await logoutApi();
+      } catch (error) { }
+      localStorage.removeItem( "token" );
+      localStorage.removeItem( "refresh_token" );
+      localStorage.removeItem( "user_data" );
+      setUser(null);
+      window.location.href = "/login";
+    };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoggedIn: !!user }}>
+    <AuthContext.Provider
+      value={{ user, loading, login, otpLogin, googleLogin, logout, isLoggedIn: !!user, }}
+    >
       {children}
     </AuthContext.Provider>
   );
 }
 
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
-}
+export const useAuth = () => useContext(AuthContext);

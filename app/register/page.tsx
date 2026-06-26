@@ -1,18 +1,72 @@
 "use client";
-
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Eye, EyeOff, CheckCircle, ArrowRight } from "lucide-react";
+import { registerApi } from "@/services/user.service";
+import { toast } from "react-toastify";
+import { GoogleLogin } from "@react-oauth/google";
+import { useAuth } from "@/context/AuthContext";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { googleLogin } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [step, setStep] = useState<"form" | "otp" | "success">("form");
   const [form, setForm] = useState({ name: "", email: "", mobile: "", password: "" });
-  const [otp, setOtp] = useState("");
+  //const [otp, setOtp] = useState("");
+
+  const [loading, setLoading] = useState(false);
+
+  const handleRegister = async () => {
+    try {
+      if (!form.name) {
+        toast.error("Full Name is required");
+        return;
+      }
+
+      if (!form.email) {
+        toast.error("Email is required");
+        return;
+      }
+
+      if (!form.mobile) {
+        toast.error("Mobile Number is required");
+        return;
+      }
+
+      if (!form.password) {
+        toast.error("Password is required");
+        return;
+      }
+      setLoading(true);
+      const fd = new FormData();
+      fd.append("full_name", form.name);
+      fd.append("email", form.email);
+      fd.append("mobile", form.mobile);
+      fd.append("password", form.password);
+
+      const response: any = await registerApi(fd);
+
+      if (
+        response?.success ||
+        response?.status === "success"
+      ) {
+        toast.success(
+          response?.message ||
+          "Account Created Successfully"
+        );
+
+        setStep("success");
+      }
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <>
@@ -67,15 +121,17 @@ export default function RegisterPage() {
                 <Link href="/privacy-policy" className="text-amber-700">Privacy Policy</Link>.
               </p>
               <button
-                onClick={() => setStep("otp")}
-                className="w-full flex items-center justify-center gap-2 bg-amber-700 hover:bg-amber-800 text-white font-semibold py-3.5 rounded-xl transition-colors"
+                onClick={handleRegister}
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 bg-amber-700 hover:bg-amber-800 text-white font-semibold py-3.5 rounded-xl transition-colors disabled:opacity-60"
               >
-                Send OTP & Verify <ArrowRight size={16} />
+                {loading ? "Creating Account..." : "Create Account"}
+                <ArrowRight size={16} />
               </button>
             </div>
           )}
 
-          {step === "otp" && (
+          {/* {step === "otp" && (
             <div className="space-y-5">
               <div className="bg-amber-50 rounded-xl p-4 text-sm text-amber-800 text-center">
                 OTP sent to <strong>+91-{form.mobile}</strong> and <strong>{form.email}</strong>
@@ -105,7 +161,7 @@ export default function RegisterPage() {
                 ← Go back
               </button>
             </div>
-          )}
+          )} */}
 
           {step === "success" && (
             <div className="text-center py-6">
@@ -117,7 +173,7 @@ export default function RegisterPage() {
                 Welcome, <strong>{form.name}</strong>! A welcome email has been sent to {form.email}.
               </p>
               <button
-                onClick={() => router.push("/account")}
+               onClick={() => router.push("/login")}
                 className="w-full bg-amber-700 hover:bg-amber-800 text-white font-semibold py-3.5 rounded-xl transition-colors"
               >
                 Go to My Account
@@ -132,9 +188,38 @@ export default function RegisterPage() {
                 <span className="text-xs text-gray-400">OR</span>
                 <div className="flex-1 h-px bg-gray-100" />
               </div>
-              <button className="w-full flex items-center justify-center gap-3 border border-gray-200 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                <span className="text-lg">🔍</span> Continue with Google
-              </button>
+              <div className="flex justify-center">
+                <GoogleLogin
+                  onSuccess={async (credentialResponse) => {
+                    if (!credentialResponse.credential)
+                      return;
+
+                    const result = await googleLogin(
+                      credentialResponse.credential
+                    );
+
+                    if (result?.success) {
+                      toast.success(
+                        "Login Successful"
+                      );
+
+                      if (
+                        result.role ===
+                        "admin"
+                      ) {
+                        router.push("/admin");
+                      } else {
+                        router.push("/");
+                      }
+                    }
+                  }}
+                  onError={() => {
+                    toast.error(
+                      "Google Login Failed"
+                    );
+                  }}
+                />
+              </div>
               <p className="text-center text-sm text-gray-500 mt-6">
                 Already have an account?{" "}
                 <Link href="/login" className="text-amber-700 font-semibold hover:text-amber-900">Login</Link>

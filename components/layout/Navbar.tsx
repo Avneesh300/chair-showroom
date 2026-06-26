@@ -38,7 +38,7 @@ export default function Navbar() {
             <Link href="/" className="px-3 py-2 text-sm text-gray-700 hover:text-amber-700 font-medium transition-colors">
               Home
             </Link>
-            <div className="relative" onMouseEnter={() => setCatOpen(true)} onMouseLeave={() => setCatOpen(false)}>
+            {/* <div className="relative" onMouseEnter={() => setCatOpen(true)} onMouseLeave={() => setCatOpen(false)}>
               <button className="flex items-center gap-1 px-3 py-2 text-sm text-gray-700 hover:text-amber-700 font-medium transition-colors">
                 Categories <ChevronDown size={14} />
               </button>
@@ -62,7 +62,7 @@ export default function Navbar() {
                   </div>
                 </div>
               )}
-            </div>
+            </div> */}
             <Link href="/products" className="px-3 py-2 text-sm text-gray-700 hover:text-amber-700 font-medium transition-colors">
               All Chairs
             </Link>
@@ -74,17 +74,6 @@ export default function Navbar() {
             </Link>
           </nav>
 
-          {/* Search bar desktop */}
-          <div className="hidden md:flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-full px-4 py-2 w-64 focus-within:border-amber-400 transition-colors">
-            <Search size={16} className="text-gray-400 flex-shrink-0" />
-            <input
-              type="text"
-              placeholder="Search chairs..."
-              className="bg-transparent text-sm outline-none w-full text-gray-700 placeholder-gray-400"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
 
           {/* Actions */}
           <div className="flex items-center gap-1">

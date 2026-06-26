@@ -7,35 +7,70 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Eye, EyeOff, Mail, Phone, ArrowRight, AlertCircle, Info } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { toast } from "react-toastify";
+import { sendEmailOtpApi } from "@/services/user.service";
+import { GoogleLogin } from "@react-oauth/google";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, otpLogin, googleLogin, } = useAuth();
   const [tab, setTab] = useState<"email" | "otp">("email");
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({ email: "", password: "", mobile: "", otp: "" });
   const [otpSent, setOtpSent] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    setError("");
-    const result = login(form.email, form.password);
-    if (result.success) {
-      if (result.role === "admin") {
-        router.push("/admin");
-      } else {
-        router.push("/account");
+  const handleLogin =
+    async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const result = await login( form.email, form.password );
+        if (result.success) {
+          toast.success("Login Successful");
+          if (result.role === "admin") {
+            router.replace("/admin");
+          } else {
+            router.replace("/");
+          }
+        } else { setError( result.error || "Invalid Credentials" );
+        }
+      } finally {
+        setLoading(false);
       }
-    } else {
-      setError(result.error || "Invalid credentials");
-    }
-  };
+    };
+  const handleSendOtp =
+    async () => {
+      try {
+        const fd = new FormData();
+        fd.append( "email", form.email );
+        const response: any = await sendEmailOtpApi( fd );
+        if ( response?.success || response?.status ==="success" ) { 
+          toast.success( "OTP Sent Successfully" );
+          setOtpSent(true);
+        }
+      } catch (error) {
+        console.log(error);
+      }
+    };
 
-  const handleOtpLogin = () => {
-    // OTP login → customer only (static demo)
-    const result = login("customer@srschairs.com", "customer123");
-    if (result.success) router.push("/account");
-  };
+  const handleOtpLogin =
+    async () => {
+      const result =
+        await otpLogin( form.email, form.otp );
+
+      if (result.success) {
+        toast.success( "Login Successful" );
+        if (result.role === "admin") {
+          router.replace("/admin");
+        } else {
+          router.replace("/");
+        }
+      } else {
+        toast.error( result.error || "Invalid OTP" );
+      }
+    };
 
   return (
     <>
@@ -47,15 +82,6 @@ export default function LoginPage() {
             <div className="w-14 h-14 bg-amber-700 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl">🪑</div>
             <h1 className="font-serif text-2xl font-bold text-amber-950">Welcome Back</h1>
             <p className="text-gray-400 text-sm mt-1">Login to your SRS Chair account</p>
-          </div>
-
-          {/* Demo credentials hint */}
-          <div className="mb-5 bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-xs text-amber-800 space-y-1">
-            <div className="flex items-center gap-1.5 font-semibold mb-1.5">
-              <Info size={13} /> Demo Credentials
-            </div>
-            <div>🔐 <span className="font-medium">Admin:</span> admin@srschairs.com / admin123</div>
-            <div>👤 <span className="font-medium">Customer:</span> customer@srschairs.com / customer123</div>
           </div>
 
           {/* Tabs */}
@@ -123,27 +149,35 @@ export default function LoginPage() {
                 onClick={handleLogin}
                 className="w-full flex items-center justify-center gap-2 bg-amber-700 hover:bg-amber-800 text-white font-semibold py-3.5 rounded-xl transition-colors"
               >
-                Login <ArrowRight size={16} />
+                {loading
+                  ? "Logging In..."
+                  : "Login"} <ArrowRight size={16} />
               </button>
             </div>
           ) : (
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Mobile Number</label>
-                <div className="flex gap-2">
-                  <span className="border border-gray-200 rounded-xl px-3 py-3 text-sm text-gray-600 bg-gray-50">+91</span>
-                  <input
-                    type="tel"
-                    placeholder="9876543210"
-                    value={form.mobile}
-                    onChange={(e) => setForm({ ...form, mobile: e.target.value })}
-                    className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-amber-400 transition-colors"
-                  />
-                </div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                  Email Address
+                </label>
+
+                <input
+                  type="email"
+                  placeholder="rahul@gmail.com"
+                  value={form.email}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      email:
+                        e.target.value,
+                    })
+                  }
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-amber-400"
+                />
               </div>
               {!otpSent ? (
                 <button
-                  onClick={() => setOtpSent(true)}
+                  onClick={handleSendOtp}
                   className="w-full bg-amber-700 hover:bg-amber-800 text-white font-semibold py-3.5 rounded-xl transition-colors"
                 >
                   Send OTP
@@ -187,9 +221,28 @@ export default function LoginPage() {
           </div>
 
           {/* Google */}
-          <button className="w-full flex items-center justify-center gap-3 border border-gray-200 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-            <span className="text-lg">🔍</span> Continue with Google
-          </button>
+          <div className="flex justify-center">
+            <GoogleLogin
+              onSuccess={async (
+                credentialResponse
+              ) => {
+                if ( !credentialResponse.credential )
+                  return;
+                const result = await googleLogin( credentialResponse.credential );
+                if ( result.success ) {
+                  toast.success( "Google Login Successful" );
+                  if ( result.role === "admin" ) {
+                    router.push( "/admin" );
+                  } else {
+                    router.push( "/account" );
+                  }
+                }
+              }}
+              onError={() =>
+                toast.error( "Google Login Failed")
+              }
+            />
+          </div>
 
           <p className="text-center text-sm text-gray-500 mt-6">
             New customer?{" "}

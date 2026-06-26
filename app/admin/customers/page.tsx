@@ -1,75 +1,120 @@
 "use client";
 
-import { useState } from "react";
-import { Search, UserX, Mail, Eye, X } from "lucide-react";
-import { formatPrice } from "@/lib/utils";
+import { useState, useEffect, useCallback } from "react";
+import { Search, UserX, Mail, Eye, X, Loader2 } from "lucide-react";
+import { toast } from "react-toastify";
+import { getUsersApi, updateUserStatusApi, sendEmailToUserApi } from "@/services/user.service";
+import { getOrdersApi } from "@/services/order.service";
+import Pagination from "@/components/common/Pagination";
 
-interface Customer {
-  id: string; name: string; email: string; mobile: string; city: string;
-  orders: number; totalSpent: number; joined: string; status: "Active" | "Blocked";
-}
-
-const initialCustomers: Customer[] = [
-  { id: "c1", name: "Rahul Sharma", email: "rahul@example.com", mobile: "9876543210", city: "Noida", orders: 3, totalSpent: 45297, joined: "2024-08-15", status: "Active" },
-  { id: "c2", name: "Priya Gupta", email: "priya@example.com", mobile: "9812345678", city: "Lucknow", orders: 1, totalSpent: 12999, joined: "2024-10-22", status: "Active" },
-  { id: "c3", name: "Vikash Kumar", email: "vikash@example.com", mobile: "9898989898", city: "Delhi", orders: 5, totalSpent: 98450, joined: "2024-06-01", status: "Active" },
-  { id: "c4", name: "Sunita Devi", email: "sunita@example.com", mobile: "9753108642", city: "Agra", orders: 2, totalSpent: 71998, joined: "2024-11-05", status: "Active" },
-  { id: "c5", name: "Arjun Singh", email: "arjun@example.com", mobile: "9001234567", city: "Kanpur", orders: 0, totalSpent: 0, joined: "2025-01-10", status: "Active" },
-  { id: "c6", name: "Meena Patel", email: "meena@example.com", mobile: "9654321098", city: "Varanasi", orders: 1, totalSpent: 5999, joined: "2024-12-20", status: "Blocked" },
-];
 
 export default function AdminCustomersPage() {
-  const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [search, setSearch] = useState("");
-  const [viewCustomer, setViewCustomer] = useState<Customer | null>(null);
-  const [emailCustomer, setEmailCustomer] = useState<Customer | null>(null);
-  const [blockCustomer, setBlockCustomer] = useState<Customer | null>(null);
+
+  const [viewCustomer, setViewCustomer] = useState<any | null>(null);
+  const [viewOrders, setViewOrders] = useState<any[]>([]);
+  const [viewOrdersLoading, setViewOrdersLoading] = useState(false);
+  const [emailCustomer, setEmailCustomer] = useState<any | null>(null);
+  const [blockCustomer, setBlockCustomer] = useState<any | null>(null);
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState("");
-  const [toast, setToast] = useState("");
+  const [updating, setUpdating] = useState(false);
+  const [emailSending, setEmailSending] = useState(false);
 
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
+  const formatPrice = (v: number) => `₹${Number(v).toLocaleString("en-IN")}`;
 
-  const filtered = customers.filter((c) =>
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.email.toLowerCase().includes(search.toLowerCase()) ||
-    c.mobile.includes(search)
-  );
-
-  const handleToggleBlock = () => {
-    if (!blockCustomer) return;
-    setCustomers(prev => prev.map(c => c.id === blockCustomer.id ? { ...c, status: c.status === "Blocked" ? "Active" : "Blocked" } : c));
-    const action = blockCustomer.status === "Blocked" ? "Unblocked" : "Blocked";
-    setBlockCustomer(null);
-    showToast(`✅ Customer ${action} successfully.`);
+  const fetchCustomers = async (page = 1, searchVal = search) => {
+    setLoading(true);
+    const response: any = await getUsersApi({ page, limit: 10, search: searchVal });
+    if (response?.success) {
+      setCustomers(response.data.users);
+      setTotalPages(response.data.pagination?.totalPages || 1);
+      setTotalCount(response.data.pagination?.total || 0);
+      setCurrentPage(page);
+    }
+    setLoading(false);
   };
 
-  const handleSendEmail = () => {
+  useEffect(() => { fetchCustomers(); }, []);
+
+  // Search debounce
+  useEffect(() => {
+    const timer = setTimeout(() => fetchCustomers(1, search), 400);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // View customer + fetch their orders
+  const handleViewCustomer = async (customer: any) => {
+    setViewCustomer(customer);
+    setViewOrders([]);
+    setViewOrdersLoading(true);
+    // Admin orders API se is user ke orders fetch karo
+    // Note: getAllOrders mein user filter support nahi hai abhi
+    // Isliye total orders count sirf dikhayenge
+    setViewOrdersLoading(false);
+  };
+
+  const handleToggleBlock = async () => {
+    if (!blockCustomer || updating) return;
+    setUpdating(true);
+    const response: any = await updateUserStatusApi({
+      id: blockCustomer._id,
+      status: blockCustomer.status === "0" ? "B" : "A",
+    });
+    if (response?.success) {
+      toast.success(response.message);
+      setBlockCustomer(null);
+      fetchCustomers(currentPage);
+    } else {
+      toast.error(response?.message || "Update failed");
+    }
+    setUpdating(false);
+  };
+
+  const handleSendEmail = async () => {
     if (!emailCustomer) return;
-    // Simulate sending email - open mailto
-    window.open(`mailto:${emailCustomer.email}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`);
-    setEmailCustomer(null);
-    setEmailSubject("");
-    setEmailBody("");
-    showToast(`✉️ Email client opened for ${emailCustomer.name}`);
+    if (!emailSubject) { toast.error("Subject required"); return; }
+    if (!emailBody) { toast.error("Message required"); return; }
+
+    setEmailSending(true);
+    const response: any = await sendEmailToUserApi({
+      email: emailCustomer.email,
+      subject: emailSubject,
+      message: emailBody,
+    });
+
+    if (response?.success) {
+      toast.success(`Email sent to ${emailCustomer.full_name}`);
+      setEmailCustomer(null);
+      setEmailSubject("");
+      setEmailBody("");
+    } else {
+      toast.error(response?.message || "Email sending failed");
+    }
+    setEmailSending(false);
   };
+
+  const activeCount = customers.filter(c => c.status === "1").length;
+  const blockedCount = customers.filter(c => c.status === "0").length;
 
   return (
     <div className="space-y-5">
-      {toast && <div className="fixed top-5 right-5 z-50 bg-gray-900 text-white text-sm px-4 py-3 rounded-xl shadow-lg">{toast}</div>}
-
       <div>
         <h1 className="font-serif text-2xl font-bold text-gray-900">Customers</h1>
-        <p className="text-sm text-gray-400">{customers.length} registered customers</p>
+        <p className="text-sm text-gray-400">{totalCount} registered customers</p>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         {[
-          { label: "Total Customers", value: customers.length },
-          { label: "Active", value: customers.filter(c => c.status === "Active").length },
-          { label: "New This Month", value: 2 },
-          { label: "Blocked", value: customers.filter(c => c.status === "Blocked").length },
+          { label: "Total Customers", value: totalCount },
+          { label: "Active", value: activeCount },
+          { label: "Blocked", value: blockedCount },
         ].map(({ label, value }) => (
           <div key={label} className="bg-white rounded-2xl p-4 border border-gray-100 text-center">
             <div className="text-2xl font-bold text-gray-900">{value}</div>
@@ -82,7 +127,13 @@ export default function AdminCustomersPage() {
       <div className="bg-white rounded-2xl border border-gray-100 p-4">
         <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 focus-within:border-amber-400">
           <Search size={15} className="text-gray-400" />
-          <input type="text" placeholder="Search by name, email, or mobile..." value={search} onChange={(e) => setSearch(e.target.value)} className="bg-transparent text-sm outline-none w-full" />
+          <input
+            type="text"
+            placeholder="Search by name, email, or mobile..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="bg-transparent text-sm outline-none w-full"
+          />
         </div>
       </div>
 
@@ -92,36 +143,53 @@ export default function AdminCustomersPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                {["Customer","Mobile","City","Orders","Total Spent","Joined","Status","Actions"].map((h) => (
+                {["Customer", "Mobile", "Orders", "Total Spent", "Joined", "Status", "Actions"].map((h) => (
                   <th key={h} className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {filtered.map((c) => (
-                <tr key={c.id} className="hover:bg-amber-50/50 transition-colors">
+              {loading ? (
+                <tr><td colSpan={5} className="px-5 py-12 text-center"><Loader2 size={24} className="animate-spin text-amber-600 mx-auto" /></td></tr>
+              ) : customers.length === 0 ? (
+                <tr><td colSpan={5} className="px-5 py-12 text-center text-gray-400 text-sm">No customers found</td></tr>
+              ) : customers.map((c) => (
+                <tr key={c._id} className="hover:bg-amber-50/50 transition-colors">
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center text-sm font-semibold text-amber-700">{c.name.charAt(0)}</div>
+                      <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center text-sm font-semibold text-amber-700">
+                        {c.full_name?.charAt(0)?.toUpperCase()}
+                      </div>
                       <div>
-                        <div className="font-medium text-gray-800">{c.name}</div>
+                        <div className="font-medium text-gray-800">{c.full_name}</div>
                         <div className="text-xs text-gray-400">{c.email}</div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-5 py-4 text-gray-600">{c.mobile}</td>
-                  <td className="px-5 py-4 text-gray-600">{c.city}</td>
-                  <td className="px-5 py-4 text-gray-600">{c.orders}</td>
-                  <td className="px-5 py-4 font-semibold text-gray-900">{c.totalSpent > 0 ? `₹${c.totalSpent.toLocaleString("en-IN")}` : "—"}</td>
-                  <td className="px-5 py-4 text-gray-500 whitespace-nowrap text-xs">{new Date(c.joined).toLocaleDateString("en-IN")}</td>
+                  <td className="px-5 py-4 text-gray-600">{c.mobile || "-"}</td>
+                  <td className="px-5 py-4 text-gray-600">{c.totalOrders || 0}</td>
+                  <td className="px-5 py-4 font-semibold text-gray-900">
+                    {c.totalSpent > 0 ? formatPrice(c.totalSpent) : "—"}
+                  </td>
+                  <td className="px-5 py-4 text-gray-500 whitespace-nowrap text-xs">
+                    {new Date(c.createdAt).toLocaleDateString("en-IN")}
+                  </td>
                   <td className="px-5 py-4">
-                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${c.status === "Active" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>{c.status}</span>
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${c.status === "1" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                      {c.status === "1" ? "Active" : "Blocked"}
+                    </span>
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-1">
-                      <button onClick={() => setViewCustomer(c)} className="w-7 h-7 flex items-center justify-center text-blue-500 hover:bg-blue-50 rounded-lg" title="View"><Eye size={14} /></button>
+                      <button onClick={() => handleViewCustomer(c)} className="w-7 h-7 flex items-center justify-center text-blue-500 hover:bg-blue-50 rounded-lg" title="View"><Eye size={14} /></button>
                       <button onClick={() => { setEmailCustomer(c); setEmailSubject(""); setEmailBody(""); }} className="w-7 h-7 flex items-center justify-center text-amber-600 hover:bg-amber-50 rounded-lg" title="Email"><Mail size={14} /></button>
-                      <button onClick={() => setBlockCustomer(c)} className={`w-7 h-7 flex items-center justify-center rounded-lg ${c.status === "Blocked" ? "text-green-600 hover:bg-green-50" : "text-red-500 hover:bg-red-50"}`} title={c.status === "Blocked" ? "Unblock" : "Block"}><UserX size={14} /></button>
+                      <button
+                        onClick={() => setBlockCustomer(c)}
+                        className={`w-7 h-7 flex items-center justify-center rounded-lg ${c.status === "0" ? "text-green-600 hover:bg-green-50" : "text-red-500 hover:bg-red-50"}`}
+                        title={c.status === "0" ? "Unblock" : "Block"}
+                      >
+                        <UserX size={14} />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -129,9 +197,8 @@ export default function AdminCustomersPage() {
             </tbody>
           </table>
         </div>
-        <div className="px-5 py-3.5 border-t border-gray-50 text-xs text-gray-400">
-          Showing {filtered.length} of {customers.length} customers
-        </div>
+       
+        <Pagination currentPage={currentPage} totalPages={totalPages} goToPage={(page) => fetchCustomers(page)} />
       </div>
 
       {/* VIEW MODAL */}
@@ -144,24 +211,28 @@ export default function AdminCustomersPage() {
             </div>
             <div className="p-6 space-y-4">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center text-2xl font-bold text-amber-700">{viewCustomer.name.charAt(0)}</div>
+                <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center text-2xl font-bold text-amber-700">
+                  {viewCustomer.full_name?.charAt(0)?.toUpperCase()}
+                </div>
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">{viewCustomer.name}</h3>
-                  <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${viewCustomer.status === "Active" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>{viewCustomer.status}</span>
+                  <h3 className="text-lg font-bold text-gray-900">{viewCustomer.full_name}</h3>
+                  <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${viewCustomer.status === "1" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                    {viewCustomer.status === "1" ? "Active" : "Blocked"}
+                  </span>
                 </div>
               </div>
               <div className="space-y-2 text-sm">
                 {[
                   ["Email", viewCustomer.email],
-                  ["Mobile", viewCustomer.mobile],
-                  ["City", viewCustomer.city],
-                  ["Total Orders", `${viewCustomer.orders}`],
-                  ["Total Spent", viewCustomer.totalSpent > 0 ? `₹${viewCustomer.totalSpent.toLocaleString("en-IN")}` : "—"],
-                  ["Member Since", new Date(viewCustomer.joined).toLocaleDateString("en-IN")],
+                  ["Mobile", viewCustomer.mobile || "-"],
+                  ["Total Orders", `${viewCustomer.totalOrders || 0}`],
+                  ["Total Spent", viewCustomer.totalSpent > 0 ? formatPrice(viewCustomer.totalSpent) : "—"],
+                  ["Login Type", viewCustomer.loginType],
+                  ["Member Since", new Date(viewCustomer.createdAt).toLocaleDateString("en-IN")],
                 ].map(([label, value]) => (
                   <div key={label} className="flex justify-between py-1.5 border-b border-gray-50">
                     <span className="text-gray-500">{label}</span>
-                    <span className="font-medium text-gray-800">{value}</span>
+                    <span className="font-medium text-gray-800 capitalize">{value}</span>
                   </div>
                 ))}
               </div>
@@ -182,7 +253,9 @@ export default function AdminCustomersPage() {
               <button onClick={() => setEmailCustomer(null)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
             </div>
             <div className="p-6 space-y-3">
-              <div className="text-sm text-gray-600">To: <span className="font-medium text-gray-800">{emailCustomer.name}</span> ({emailCustomer.email})</div>
+              <div className="text-sm text-gray-600">
+                To: <span className="font-medium text-gray-800">{emailCustomer.full_name}</span> ({emailCustomer.email})
+              </div>
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Subject</label>
                 <input value={emailSubject} onChange={e => setEmailSubject(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-amber-400" placeholder="Email subject..." />
@@ -194,7 +267,14 @@ export default function AdminCustomersPage() {
             </div>
             <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-2">
               <button onClick={() => setEmailCustomer(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50">Cancel</button>
-              <button onClick={handleSendEmail} className="px-4 py-2 text-sm bg-amber-700 hover:bg-amber-800 text-white rounded-xl">Send Email</button>
+              <button 
+               onClick={handleSendEmail} 
+               disabled={emailSending}
+                className="px-4 py-2 text-sm bg-amber-700 hover:bg-amber-800 disabled:opacity-60 text-white rounded-xl flex items-center gap-2"
+              >
+                {emailSending && <Loader2 size={14} className="animate-spin" />}
+                Send Email
+              </button>
             </div>
           </div>
         </div>
@@ -204,21 +284,28 @@ export default function AdminCustomersPage() {
       {blockCustomer && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6 space-y-4">
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto ${blockCustomer.status === "Blocked" ? "bg-green-100" : "bg-red-100"}`}>
-              <UserX size={22} className={blockCustomer.status === "Blocked" ? "text-green-600" : "text-red-600"} />
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto ${blockCustomer.status === "0" ? "bg-green-100" : "bg-red-100"}`}>
+              <UserX size={22} className={blockCustomer.status === "0" ? "text-green-600" : "text-red-600"} />
             </div>
             <div className="text-center">
-              <h3 className="font-bold text-gray-900 text-lg">{blockCustomer.status === "Blocked" ? "Unblock" : "Block"} Customer?</h3>
+              <h3 className="font-bold text-gray-900 text-lg">
+                {blockCustomer.status === "0" ? "Unblock" : "Block"} Customer?
+              </h3>
               <p className="text-sm text-gray-500 mt-1">
-                {blockCustomer.status === "Blocked"
-                  ? `"${blockCustomer.name}" will be reactivated and can login again.`
-                  : `"${blockCustomer.name}" will be blocked and cannot login.`}
+                {blockCustomer.status === "0"
+                  ? `"${blockCustomer.full_name}" will be reactivated and can login again.`
+                  : `"${blockCustomer.full_name}" will be blocked and cannot login.`}
               </p>
             </div>
             <div className="flex gap-2">
               <button onClick={() => setBlockCustomer(null)} className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
-              <button onClick={handleToggleBlock} className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-white ${blockCustomer.status === "Blocked" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}`}>
-                {blockCustomer.status === "Blocked" ? "Unblock" : "Block"}
+              <button
+                onClick={handleToggleBlock}
+                disabled={updating}
+                className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-white flex items-center justify-center gap-2 ${blockCustomer.status === "0" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"} disabled:opacity-60`}
+              >
+                {updating && <Loader2 size={14} className="animate-spin" />}
+                {blockCustomer.status === "0" ? "Unblock" : "Block"}
               </button>
             </div>
           </div>

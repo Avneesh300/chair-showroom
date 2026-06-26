@@ -8,6 +8,7 @@ import {
   Settings, LogOut, Menu, X, Layers, Ticket, Bell, ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useEffect } from "react";
 
 const navItems = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
@@ -15,15 +16,21 @@ const navItems = [
   { label: "Orders", href: "/admin/orders", icon: ShoppingBag },
   { label: "Customers", href: "/admin/customers", icon: Users },
   { label: "Categories", href: "/admin/categories", icon: Layers },
+  { label: "Brands", href: "/admin/brands", icon: Layers },
   { label: "Coupons", href: "/admin/coupons", icon: Ticket },
   { label: "Reports", href: "/admin/reports", icon: BarChart2 },
   { label: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
+
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const {
+    user,
+    logout,
+    loading,
+  } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = () => {
@@ -31,7 +38,34 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     router.push("/login");
   };
 
+  useEffect(() => {
+    if (loading) return;
+
+    if (!user) {
+      router.replace("/login");
+      return;
+    }
+
+    if (user.role !== "admin") {
+      router.replace("/");
+      return;
+    }
+  }, [user, loading, router]);
+
+  if (loading) {
+    return null;
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  if (user.role !== "admin") {
+    return null;
+  }
+
   return (
+
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
       <aside className={`
@@ -62,11 +96,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 key={href}
                 href={href}
                 onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors ${
-                  isActive
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors ${isActive
                     ? "bg-amber-700 text-white font-medium"
                     : "text-amber-200 hover:bg-amber-900 hover:text-white"
-                }`}
+                  }`}
               >
                 <Icon size={17} />
                 {label}
@@ -115,7 +148,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <div className="flex items-center gap-2 pl-3 border-l border-gray-100">
               <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center text-sm">👤</div>
               <div className="hidden sm:block">
-                <div className="text-xs font-semibold text-gray-800">{user?.name || "Admin"}</div>
+                <div className="text-xs font-semibold text-gray-800">{user?.full_name || "Admin"}</div>
                 <div className="text-xs text-gray-400">{user?.email || "admin@srschairs.com"}</div>
               </div>
             </div>

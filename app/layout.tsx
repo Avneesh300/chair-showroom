@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { CartProvider } from "@/context/CartContext";
 import { AuthProvider } from "@/context/AuthContext";
+import { GoogleOAuthProvider } from "@react-oauth/google";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 
 export const metadata: Metadata = {
   title: "SRS Chair Showroom – Premium Chairs Online",
@@ -24,11 +28,27 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased">
-        <AuthProvider>
-          <CartProvider>
-            {children}
-          </CartProvider>
-        </AuthProvider>
+        <GoogleOAuthProvider
+          clientId={
+            process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!
+          }
+        >
+          <AuthProvider>
+            <CartProvider>
+              {children}
+            </CartProvider>
+
+            <ToastContainer
+              position="top-right"
+              autoClose={3000}
+              hideProgressBar={false}
+              newestOnTop
+              closeOnClick
+              pauseOnHover
+              theme="light"
+            />
+          </AuthProvider>
+        </GoogleOAuthProvider>
       </body>
     </html>
   );
