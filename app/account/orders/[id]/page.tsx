@@ -8,6 +8,13 @@ import Footer from "@/components/layout/Footer";
 import { getOrderDetailApi } from "@/services/order.service";
 import { Loader2, ArrowLeft, Package } from "lucide-react";
 
+interface AuthUser {
+  full_name?: string;
+  name?: string;
+  email?: string;
+  mobile?: string;
+}
+
 const statusColors: Record<string, string> = {
   "PLACED": "bg-gray-100 text-gray-700",
   "PROCESSING": "bg-amber-100 text-amber-700",

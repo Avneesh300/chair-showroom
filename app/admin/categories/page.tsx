@@ -5,11 +5,18 @@ import { Category } from "@/types";
 import { Plus, Edit2, Trash2, GripVertical, Eye, X } from "lucide-react";
 import { useEffect } from "react";
 import { toast } from "react-toastify";
-import { getCategoriesApi, saveCategoryApi, deleteCategoryApi,} from "@/services/category.service";
+import { getCategoriesApi, saveCategoryApi, deleteCategoryApi, } from "@/services/category.service";
 import Pagination from "@/components/common/Pagination";
 
-const emptyCategory: Omit<Category, "id"> = { name: "" };
 
+const emptyCategory: Omit<Category, "id"> = {
+  name: "",
+  image: "",
+  icon: "",
+  slug: "",
+  productCount: 0,
+  status: 1,
+};
 const CategoryForm = ({ data, onChange }: { data: any; onChange: (k: string, v: any) => void }) => (
   <div className="space-y-3 text-sm">
     <div>
@@ -34,37 +41,37 @@ export default function AdminCategoriesPage() {
   const [totalPages, setTotalPages] = useState(1);
 
   const fetchCategories = async (page = 1) => {
-  setLoading(true);
-  const response: any = await getCategoriesApi({
-    page,
-    limit: 10,
-    search: "",
-  });
-  if (response?.success) {
-    setCategories(response.data);
-    const pagination = response.data?.[0]?.paginations;
-    setTotalPages(pagination?.totalPages || 1);
-    setCurrentPage(pagination?.currentPage || page);
-  }
-  setLoading(false);
-};
+    setLoading(true);
+    const response: any = await getCategoriesApi({
+      page,
+      limit: 10,
+      search: "",
+    });
+    if (response?.success) {
+      setCategories(response.data);
+      const pagination = response.data?.[0]?.paginations;
+      setTotalPages(pagination?.totalPages || 1);
+      setCurrentPage(pagination?.currentPage || page);
+    }
+    setLoading(false);
+  };
   useEffect(() => {
     fetchCategories();
   }, []);
 
   const handleAdd =
     async () => {
-       if (!form.name) {
-        setFormError("Category Name Required" );
+      if (!form.name) {
+        setFormError("Category Name Required");
         return;
       }
       const fd = new FormData();
-      fd.append("category_name", form.name );
+      fd.append("category_name", form.name);
       const response: any = await saveCategoryApi(fd);
-      if ( response?.success ) {
-        setShowAddModal( false );
-        toast.success( response.message )
-        setForm( emptyCategory );
+      if (response?.success) {
+        setShowAddModal(false);
+        toast.success(response.message)
+        setForm(emptyCategory);
         fetchCategories();
       }
     };
@@ -73,13 +80,13 @@ export default function AdminCategoriesPage() {
     async () => {
       if (!editCat) return;
       const fd = new FormData();
-      fd.append( "id", editCat.id );
-      fd.append( "category_name", editCat.name );
+      fd.append("id", editCat.id);
+      fd.append("category_name", editCat.name);
       const response: any = await saveCategoryApi(fd);
-      if ( response?.succes ) {
-        setShowAddModal( false );
-        toast.success( response.message );
-        setEditCat( null );
+      if (response?.succes) {
+        setShowAddModal(false);
+        toast.success(response.message);
+        setEditCat(null);
         fetchCategories();
       }
     };
@@ -92,9 +99,9 @@ export default function AdminCategoriesPage() {
           id: deleteCat.id,
           status: deleteCat.status == 1 ? "A" : "B",
         });
-      if ( response?.success ) {
-        setDeleteCat( null );
-        toast.success( response.message );
+      if (response?.success) {
+        setDeleteCat(null);
+        toast.success(response.message);
         fetchCategories();
       }
     };
@@ -126,7 +133,7 @@ export default function AdminCategoriesPage() {
               <div className="col-span-1 text-gray-300 cursor-grab"><GripVertical size={16} /></div>
               <div className="col-span-4 font-medium text-gray-800 text-sm">{cat.name}</div>
               <div className="col-span-4">
-                 <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${cat.status === "1" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${cat.status === "1" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
                   {cat.status === "1" ? "Active" : "Inactive"}
                 </span>
               </div>
@@ -139,7 +146,7 @@ export default function AdminCategoriesPage() {
           ))}
         </div>
 
-         <Pagination
+        <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
           goToPage={(page) => fetchCategories(page)}

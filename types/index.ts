@@ -35,6 +35,7 @@ export interface Category {
   icon: string;
   productCount: number;
   image: string;
+  status: number;
 }
 
 export interface Review {

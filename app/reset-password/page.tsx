@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import {Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
@@ -12,7 +12,7 @@ import { toast } from "react-toastify";
 
 import { resetPasswordApi } from "@/services/user.service";
 
-export default function ResetPasswordPage() {
+ function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -220,5 +220,13 @@ export default function ResetPasswordPage() {
 
       <Footer />
     </>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }

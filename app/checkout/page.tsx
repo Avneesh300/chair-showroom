@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import {Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/layout/Navbar";
@@ -16,7 +16,7 @@ declare global {
   interface Window { Razorpay: any; }
 }
 
-export default function CheckoutPage() {
+ function CheckoutContent() {
   const searchParams = useSearchParams();
   const user = JSON.parse(localStorage.getItem("user_data") || "{}");
 
@@ -418,5 +418,13 @@ export default function CheckoutPage() {
       </main>
       <Footer />
     </>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <CheckoutContent />
+    </Suspense>
   );
 }

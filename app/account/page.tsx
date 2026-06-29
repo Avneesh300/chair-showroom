@@ -11,6 +11,13 @@ import { Package, ChevronRight, LogOut, Loader2, Star, X } from "lucide-react";
 import { toast } from "react-toastify";
 import { submitReviewApi } from "@/services/review.service";
 
+interface AuthUser {
+  full_name?: string;
+  name?: string;
+  email?: string;
+  mobile?: string;
+}
+
 const statusColors: Record<string, string> = {
   "PLACED": "bg-gray-100 text-gray-700",
   "PROCESSING": "bg-amber-100 text-amber-700",
@@ -220,7 +227,7 @@ export default function AccountPage() {
           <div className="bg-white rounded-2xl p-6 border border-gray-100 mb-6 flex items-center gap-5">
             <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center text-3xl">👤</div>
             <div className="flex-1">
-              <h1 className="font-serif text-xl font-bold text-gray-900">{user?.full_name || user?.name || "User"}</h1>
+              <h1 className="font-serif text-xl font-bold text-gray-900">{user?.full_name || "User"}</h1>
               <p className="text-sm text-gray-500">{user?.email} • {user?.mobile || ""}</p>
             </div>
             <button

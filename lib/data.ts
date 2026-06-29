@@ -1,16 +1,16 @@
 import { Product, Category, Review, Order, Coupon } from "@/types";
 
 export const categories: Category[] = [
-  { id: "1", name: "Office Chairs", slug: "office-chairs", icon: "💼", productCount: 24, image: "https://images.unsplash.com/photo-1580480055273-228ff5388ef8?w=400" },
-  { id: "2", name: "Dining Chairs", slug: "dining-chairs", icon: "🍽️", productCount: 18, image: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400" },
-  { id: "3", name: "Gaming Chairs", slug: "gaming-chairs", icon: "🎮", productCount: 12, image: "https://images.unsplash.com/photo-1598550476439-6847785fcea6?w=400" },
-  { id: "4", name: "Recliner Chairs", slug: "recliner-chairs", icon: "🛋️", productCount: 8, image: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400" },
-  { id: "5", name: "Lounge Chairs", slug: "lounge-chairs", icon: "☕", productCount: 10, image: "https://images.unsplash.com/photo-1506439773649-6e0eb8cfb237?w=400" },
-  { id: "6", name: "Outdoor Chairs", slug: "outdoor-chairs", icon: "🌿", productCount: 14, image: "https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=400" },
-  { id: "7", name: "Foldable Chairs", slug: "foldable-chairs", icon: "📦", productCount: 9, image: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400" },
-  { id: "8", name: "Bar Stools", slug: "bar-stools", icon: "🍸", productCount: 6, image: "https://images.unsplash.com/photo-1561677843-39dee7a319ca?w=400" },
-  { id: "9", name: "Kids Chairs", slug: "kids-chairs", icon: "🧒", productCount: 7, image: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400" },
-  { id: "10", name: "Armchairs", slug: "armchairs", icon: "🏠", productCount: 11, image: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400" },
+  { id: "1", name: "Office Chairs", slug: "office-chairs", icon: "💼", productCount: 24, image: "https://images.unsplash.com/photo-1580480055273-228ff5388ef8?w=400", status: 1},
+  { id: "2", name: "Dining Chairs", slug: "dining-chairs", icon: "🍽️", productCount: 18, image: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400", status: 1 },
+  { id: "3", name: "Gaming Chairs", slug: "gaming-chairs", icon: "🎮", productCount: 12, image: "https://images.unsplash.com/photo-1598550476439-6847785fcea6?w=400", status: 1 },
+  { id: "4", name: "Recliner Chairs", slug: "recliner-chairs", icon: "🛋️", productCount: 8, image: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400", status: 1 },
+  { id: "5", name: "Lounge Chairs", slug: "lounge-chairs", icon: "☕", productCount: 10, image: "https://images.unsplash.com/photo-1506439773649-6e0eb8cfb237?w=400", status: 1 },
+  { id: "6", name: "Outdoor Chairs", slug: "outdoor-chairs", icon: "🌿", productCount: 14, image: "https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=400", status: 1 },
+  { id: "7", name: "Foldable Chairs", slug: "foldable-chairs", icon: "📦", productCount: 9, image: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400", status: 1 },
+  { id: "8", name: "Bar Stools", slug: "bar-stools", icon: "🍸", productCount: 6, image: "https://images.unsplash.com/photo-1561677843-39dee7a319ca?w=400", status: 1 },
+  { id: "9", name: "Kids Chairs", slug: "kids-chairs", icon: "🧒", productCount: 7, image: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400", status: 1 },
+  { id: "10", name: "Armchairs", slug: "armchairs", icon: "🏠", productCount: 11, image: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400", status: 1 },
 ];
 
 export const products: Product[] = [
